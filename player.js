@@ -59,42 +59,51 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Check if user has license for this movie
-        const userLicenses = JSON.parse(localStorage.getItem('movie_licenses') || '[]');
-        const hasLicense = userLicenses.includes(movieId);
+        fetch(`check_license.php?movie_id=${movieId}`)
+            .then(response => response.json())
+            .then(data => {
+                const hasLicense = data.hasLicense;
 
-        if (hasLicense) {
-            // Set video source if available
-            if (movie.videoUrl) {
-                player.source = {
-                    type: 'video',
-                    sources: [
-                        {
-                            src: movie.videoUrl,
-                            type: 'video/mp4',
-                            size: 1080
-                        }
-                    ]
-                };
-            } else {
+                if (hasLicense) {
+                    // Set video source if available
+                    if (movie.videoUrl) {
+                        player.source = {
+                            type: 'video',
+                            sources: [
+                                {
+                                    src: movie.videoUrl,
+                                    type: 'video/mp4',
+                                    size: 1080
+                                }
+                            ]
+                        };
+                    } else {
+                        const videoWrapper = document.querySelector('.video-wrapper');
+                        videoWrapper.innerHTML = '<div class="video-unavailable">Film niedostępny</div>';
+                    }
+                } else {
+                    // Show payment required message and button
+                    const videoWrapper = document.querySelector('.video-wrapper');
+                    videoWrapper.innerHTML = `
+                        <div class="video-unavailable">
+                            <p>Aby obejrzeć ten film, musisz wykupić dostęp</p>
+                            <form action="startPaymentExample.php" method="POST">
+                                <input type="hidden" name="movieId" value="${movieId}">
+                                <button type="submit" class="btn btn-primary">
+                                    <i data-lucide="credit-card"></i>
+                                    <span>Wykup dostęp</span>
+                                </button>
+                            </form>
+                        </div>
+                    `;
+                    lucide.createIcons();
+                }
+            })
+            .catch(error => {
+                console.error('Error checking license:', error);
                 const videoWrapper = document.querySelector('.video-wrapper');
-                videoWrapper.innerHTML = '<div class="video-unavailable">Film niedostępny</div>';
-            }
-        } else {
-            // Show payment required message and button
-            const videoWrapper = document.querySelector('.video-wrapper');
-            videoWrapper.innerHTML = `
-                <div class="video-unavailable">
-                    <p>Aby obejrzeć ten film, musisz wykupić dostęp</p>
-                    <form action="startPaymentExample.php" method="POST">
-                        <input type="hidden" name="movieId" value="${movieId}">
-                        <button type="submit" class="btn btn-primary">
-                            <i data-lucide="credit-card"></i>
-                            <span>Wykup dostęp</span>
-                        </button>
-                    </form>
-                </div>
-            `;
-        }
+                videoWrapper.innerHTML = '<div class="video-unavailable">Wystąpił błąd podczas sprawdzania licencji</div>';
+            });
     } else {
         // Redirect to home page if movie not found
         window.location.href = '/';
